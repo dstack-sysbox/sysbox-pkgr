@@ -747,7 +747,11 @@ function is_supported_distro() {
 		[[ "$distro" == "ubuntu-20.04" ]] ||
 		[[ "$distro" == "ubuntu-18.04" ]] ||
 		[[ "$distro" =~ "debian" ]] ||
-		[[ "$distro" =~ "flatcar" ]]; then
+		[[ "$distro" =~ "flatcar" ]] ||
+		[[ "$distro" =~ "rocky" ]] ||
+		[[ "$distro" =~ "rhel" ]] ||
+		[[ "$distro" =~ "centos" ]] ||
+		[[ "$distro" =~ "almalinux" ]]; then
 		return
 	fi
 
@@ -765,6 +769,18 @@ function is_supported_kernel() {
 			return 1
 		fi
 
+		return 0
+	fi
+
+	# RHEL-family (Rocky, RHEL, CentOS, AlmaLinux) requires kernel 5.14+ (id-mapped mounts).
+	if [[ "$os_distro_release" =~ "rocky" ]] ||
+		[[ "$os_distro_release" =~ "rhel" ]] ||
+		[[ "$os_distro_release" =~ "centos" ]] ||
+		[[ "$os_distro_release" =~ "almalinux" ]]; then
+		if semver_lt $kversion 5.14; then
+			echo "Unsupported kernel version $kversion for $os_distro_release distribution (< 5.14)."
+			return 1
+		fi
 		return 0
 	fi
 

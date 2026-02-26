@@ -85,7 +85,17 @@ function semver_ge() {
 	fi
 }
 
+function is_rhel_family() {
+	grep -qiE '^ID=(rocky|rhel|centos|almalinux)' /etc/os-release 2>/dev/null
+}
+
 function install_package_deps() {
+
+	if is_rhel_family; then
+		echo "RHEL-family detected, using dnf for package installation..."
+		dnf install -y rsync fuse fuse-libs iptables ca-certificates
+		return
+	fi
 
 	# Need this to work-around "E: dpkg was interrupted, you must manually run 'dpkg --configure -a' to correct the problem."
 	dpkg --configure -a
@@ -132,6 +142,12 @@ function shiftfs_needed() {
 	# and stable, but is still recommended if it is available. the max supported
 	# version for shiftfs is 6.2, so check against that here
 	local kversion=$(uname -r | cut -d "." -f1-2)
+
+	# RHEL-family kernels (>= 5.14) have id-mapped mount backports; shiftfs not needed
+	if is_rhel_family; then
+		echo "RHEL-family kernel detected, skipping shiftfs (id-mapped mounts available)."
+		return 1
+	fi
 
 	if semver_ge $kversion 6.2; then
 		# not needed
