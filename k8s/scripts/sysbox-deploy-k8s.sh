@@ -358,7 +358,26 @@ function rm_systemd_units_from_host() {
 function apply_sysbox_env_config() {
 	# Note: this requires CAP_SYS_ADMIN on the host
 	echo "Configuring host sysctls ..."
-	sysctl -p "${host_sysctl}/99-sysbox-sysctl.conf"
+
+	# Remove sysctls that don't exist on RHEL-family kernels (e.g.,
+	# kernel.unprivileged_userns_clone is Debian/Ubuntu-specific).
+	local sysctl_conf="${host_sysctl}/99-sysbox-sysctl.conf"
+	local tmp_conf="${sysctl_conf}.filtered"
+	while IFS= read -r line; do
+		# Skip comments and blank lines
+		if [[ "$line" =~ ^[[:space:]]*# ]] || [[ -z "$line" ]]; then
+			echo "$line" >> "$tmp_conf"
+			continue
+		fi
+		local key=$(echo "$line" | cut -d'=' -f1 | tr -d ' ' | tr '.' '/')
+		if [ -e "/proc/sys/${key}" ]; then
+			echo "$line" >> "$tmp_conf"
+		else
+			echo "Skipping unsupported sysctl: $line"
+		fi
+	done < "$sysctl_conf"
+	sysctl -p "$tmp_conf"
+	rm -f "$tmp_conf"
 }
 
 function start_sysbox() {
@@ -707,7 +726,7 @@ function get_container_runtime() {
 }
 
 function get_host_distro() {
-	local distro_name=$(grep -w "^ID" "$host_os_release" | cut -d "=" -f2)
+	local distro_name=$(grep -w "^ID" "$host_os_release" | cut -d "=" -f2 | tr -d '"')
 	local version_id=$(grep -w "^VERSION_ID" "$host_os_release" | cut -d "=" -f2 | tr -d '"')
 	echo "${distro_name}-${version_id}"
 }
