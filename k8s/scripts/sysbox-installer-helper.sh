@@ -86,7 +86,7 @@ function semver_ge() {
 }
 
 function is_rhel_family() {
-	grep -qiE '^ID=(rocky|rhel|centos|almalinux)' /etc/os-release 2>/dev/null
+	grep -qiE '^ID="?(rocky|rhel|centos|almalinux)' /etc/os-release 2>/dev/null
 }
 
 function install_package_deps() {
